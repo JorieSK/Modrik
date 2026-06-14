@@ -1,3 +1,4 @@
+# Extracts text from uploaded .txt and .pdf files, then splits it into overlapping chunks.
 import pdfplumber
 
 

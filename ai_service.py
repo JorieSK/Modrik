@@ -1,3 +1,4 @@
+# Handles streaming LLM responses from OpenAI using a prompt and optional file context.
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
