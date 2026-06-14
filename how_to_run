@@ -1,0 +1,6 @@
+.\.venv\Scripts\Activate.ps1
+
+this is to run the FastAPI server
+uvicorn main:app --reload
+
+http://127.0.0.1:8000/docs
