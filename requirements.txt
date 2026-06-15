@@ -1,6 +1,8 @@
 streamlit
 python-dotenv
 openai
-pdfplumber
+pymupdf
 faiss-cpu
 numpy
+pandas
+openpyxl
