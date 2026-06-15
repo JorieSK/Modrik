@@ -1,11 +1,18 @@
 """
-Run once to embed the labor law Excel into a FAISS index saved to disk.
+Run once to embed the labor law Excel files into a FAISS index saved to disk.
 Usage: python3 ingest_labor_law.py
 """
 import pandas as pd
 from vector_store import embed_and_store, save_to_disk
 
-EXCEL_PATH = "labor_law_rag_dataset.xlsx"
+DATA_DIR = "data"
+# label → (path, status_tag)
+# Repealed articles are included so the AI can tell users the article is no longer in force
+EXCEL_FILES = {
+    "active":   (f"{DATA_DIR}/labor_law_active.xlsx",   None),
+    "amended":  (f"{DATA_DIR}/labor_law_amended.xlsx",  "⚠️ هذه المادة معدّلة"),
+    "repealed": (f"{DATA_DIR}/labor_law_repealed.xlsx", "🚫 هذه المادة ملغاة ولا تُطبَّق حالياً"),
+}
 CHUNK_MAX = 600  # chars — articles longer than this get split into sub-chunks
 
 
@@ -46,7 +53,7 @@ def split_article(header: str, text: str, kw_suffix: str) -> list[str]:
     ]
 
 
-def build_chunks(df: pd.DataFrame) -> list[str]:
+def build_chunks(df: pd.DataFrame, status_tag: str | None = None) -> list[str]:
     chunks = []
     for _, row in df.iterrows():
         article_num = str(row.get("رقم المادة (نصي)", "")).strip()
@@ -57,7 +64,8 @@ def build_chunks(df: pd.DataFrame) -> list[str]:
         if not text or text == "nan":
             continue
 
-        header    = f"{article_num} — {chapter}"
+        status_prefix = f"{status_tag}\n" if status_tag else ""
+        header    = f"{status_prefix}{article_num} — {chapter}"
         kw_suffix = f"\nالكلمات المفتاحية: {keywords}" if keywords and keywords != "nan" else ""
 
         if len(text) > CHUNK_MAX:
@@ -69,19 +77,19 @@ def build_chunks(df: pd.DataFrame) -> list[str]:
 
 
 def main():
-    print("Reading Excel…")
-    df = pd.read_excel(EXCEL_PATH)
+    print("Reading Excel files…")
+    all_chunks: list[str] = []
+    for label, (path, status_tag) in EXCEL_FILES.items():
+        df_part = pd.read_excel(path)
+        print(f"  {path}: {len(df_part)} rows ({label})")
+        chunks = build_chunks(df_part, status_tag)
+        print(f"    >> {len(chunks)} chunks")
+        all_chunks.extend(chunks)
 
-    if "الحالة" in df.columns:
-        df = df[df["الحالة"] == "سارية"]
-
-    print(f"  {len(df)} active articles")
-
-    chunks = build_chunks(df)
-    print(f"  {len(chunks)} chunks after smart splitting")
+    print(f"  {len(all_chunks)} total chunks after smart splitting")
 
     print("Embedding with text-embedding-3-large (multilingual)…")
-    embed_and_store(chunks)
+    embed_and_store(all_chunks)
 
     print("Saving index to disk…")
     save_to_disk()
