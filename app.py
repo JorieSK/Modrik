@@ -24,18 +24,11 @@ st.markdown("""
     .block-container { padding-top: 2rem; padding-bottom: 7rem; max-width: 760px; }
     [data-testid="stAppViewContainer"], body, html { background: #FAFEFE; direction: rtl; }
 
-    /* ── Conversation scroll area ── */
-    [data-testid="stAppScrollToBottomContainer"] {
-        overflow-y: auto !important;
-        overscroll-behavior: contain;
-    }
-    [data-testid="stAppScrollToBottomContainer"]::-webkit-scrollbar { width: 8px; }
-    [data-testid="stAppScrollToBottomContainer"]::-webkit-scrollbar-track { background: transparent; }
-    [data-testid="stAppScrollToBottomContainer"]::-webkit-scrollbar-thumb {
-        background: #D0F0F3;
-        border-radius: 4px;
-    }
-    [data-testid="stAppScrollToBottomContainer"]::-webkit-scrollbar-thumb:hover { background: #B2E8EC; }
+    /* ── Scrollbar styling only — don't touch overflow/flex ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #D0F0F3; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #B2E8EC; }
 
     /* ── Header ── */
     .top-header { text-align: center; padding: 0 0 1.4rem; }
@@ -105,22 +98,6 @@ if "file_text" not in st.session_state:
 if "file_name" not in st.session_state:
     st.session_state.file_name = ""
 
-# ── Center everything on the empty (no-conversation) screen ────
-if not st.session_state.messages:
-    st.markdown("""
-    <style>
-        [data-testid="stAppScrollToBottomContainer"] { justify-content: center; }
-        [data-testid="stAppScrollToBottomContainer"] > div:nth-child(2) { flex: 0 !important; }
-        [data-testid="stMainBlockContainer"] { padding-bottom: 1rem !important; }
-        [data-testid="stBottom"] { position: static !important; background: transparent !important; }
-        [data-testid="stBottom"] > div { background: transparent !important; }
-        [data-testid="stBottomBlockContainer"] {
-            max-width: 760px;
-            margin: 0 auto;
-            padding: 0.5rem 0 0 !important;
-        }
-    </style>
-    """, unsafe_allow_html=True)
 
 # ── Logo + title ───────────────────────────────────────────────
 col1, col2, col3 = st.columns([1, 1, 1])
@@ -143,10 +120,11 @@ def show_sources(scored_chunks: list[tuple[str, float]], file_text: str):
         parts.append("📎 ملف العقد")
     if not parts:
         return
-    with st.expander(f"📚 المصادر المستخدمة — {' · '.join(parts)}"):
+    with st.popover(f"📚 المصادر — {' · '.join(parts)}"):
         if file_text:
             st.markdown("**📎 ملف العقد المرفوع**")
-            st.markdown(f"> {file_text[:1500].replace(chr(10), '  \n> ')}{'…' if len(file_text) > 1500 else ''}")
+            preview = file_text[:2000] + ("…" if len(file_text) > 2000 else "")
+            st.text_area("", value=preview, height=180, disabled=True, label_visibility="collapsed")
             if scored_chunks:
                 st.divider()
         for i, (chunk, score) in enumerate(scored_chunks, 1):
@@ -157,7 +135,7 @@ def show_sources(scored_chunks: list[tuple[str, float]], file_text: str):
                 f'<span style="font-size:0.75rem;color:{color};">تطابق {pct}%</span>',
                 unsafe_allow_html=True,
             )
-            st.markdown(f"> {chunk.replace(chr(10), '  \n> ')}")
+            st.text_area("", value=chunk, height=130, disabled=True, key=f"chunk_{i}_{hash(chunk)}", label_visibility="collapsed")
             if i < len(scored_chunks):
                 st.divider()
 
