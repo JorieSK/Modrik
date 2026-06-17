@@ -1,15 +1,16 @@
 from dotenv import load_dotenv
 import streamlit as st
-from ai_service import stream_response
-from file_service import extract_text
-from vector_store import load_from_disk, retrieve_with_scores, is_loaded
+from core.ai_service import stream_response
+from core.file_service import extract_text
+from core.vector_store import load_from_disk, retrieve_with_scores, is_loaded
+from core.pii_guard import redact_pii
 
 load_dotenv()
 
 st.set_page_config(
-    page_title="مدرك",
-    page_icon="✦",
-    layout="centered",
+    page_title="Mudrik",
+    page_icon="🔵",
+    layout="wide",
     initial_sidebar_state="collapsed",
 )
 
@@ -83,6 +84,19 @@ st.markdown("""
     [data-testid="stChatInputSubmitButton"] {
         color: #1A9AA8 !important;
     }
+
+    /* ── Sources expander scrollable ── */
+    [data-testid="stExpanderDetails"] {
+        max-height: 420px;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    [data-testid="stExpanderDetails"]::-webkit-scrollbar { width: 6px; }
+    [data-testid="stExpanderDetails"]::-webkit-scrollbar-track { background: transparent; }
+    [data-testid="stExpanderDetails"]::-webkit-scrollbar-thumb {
+        background: #B2E8EC;
+        border-radius: 4px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -102,7 +116,7 @@ if "file_name" not in st.session_state:
 # ── Logo + title ───────────────────────────────────────────────
 col1, col2, col3 = st.columns([1, 1, 1])
 with col2:
-    st.image("logo.png", use_container_width=True)
+    st.image("assets/logo.png", use_container_width=True)
 
 st.markdown("""
 <div class="top-header">
@@ -115,14 +129,14 @@ st.markdown("""
 def show_sources(scored_chunks: list[tuple[str, float]], file_text: str):
     parts = []
     if scored_chunks:
-        parts.append(f"⚖️ {len(scored_chunks)} مواد من نظام العمل")
+        parts.append(f"{len(scored_chunks)} مواد من نظام العمل")
     if file_text:
-        parts.append("📎 ملف العقد")
+        parts.append("ملف العقد")
     if not parts:
         return
-    with st.popover(f"📚 المصادر — {' · '.join(parts)}"):
+    with st.popover(f"المصادر — {' · '.join(parts)}"):
         if file_text:
-            st.markdown("**📎 ملف العقد المرفوع**")
+            st.markdown("**ملف العقد المرفوع**")
             preview = file_text[:2000] + ("…" if len(file_text) > 2000 else "")
             st.text_area("", value=preview, height=180, disabled=True, label_visibility="collapsed")
             if scored_chunks:
@@ -131,7 +145,7 @@ def show_sources(scored_chunks: list[tuple[str, float]], file_text: str):
             pct = int(score * 100)
             color = "#1A9AA8" if pct >= 70 else "#F39C12" if pct >= 50 else "#999"
             st.markdown(
-                f"**⚖️ المادة {i}** &nbsp; "
+                f"**المادة {i}** &nbsp; "
                 f'<span style="font-size:0.75rem;color:{color};">تطابق {pct}%</span>',
                 unsafe_allow_html=True,
             )
@@ -140,11 +154,14 @@ def show_sources(scored_chunks: list[tuple[str, float]], file_text: str):
                 st.divider()
 
 def send(prompt: str):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    clean_prompt, pii_count = redact_pii(prompt)
+    st.session_state.messages.append({"role": "user", "content": clean_prompt})
     with st.chat_message("user"):
-        st.markdown(prompt)
+        st.markdown(clean_prompt)
+        if pii_count:
+            st.caption(f"تم إخفاء {pii_count} بيانات حساسة تلقائياً")
 
-    scored_chunks = retrieve_with_scores(prompt, k=5) if is_loaded() else []
+    scored_chunks = retrieve_with_scores(clean_prompt, k=5) if is_loaded() else []
     file_text = st.session_state.file_text
 
     context_parts = []
@@ -168,8 +185,7 @@ def send(prompt: str):
 
 # ── Chat ───────────────────────────────────────────────────────
 for msg in st.session_state.messages:
-    avatar = "✨" if msg["role"] == "assistant" else None
-    with st.chat_message(msg["role"], avatar=avatar):
+    with st.chat_message(msg["role"], avatar="✨" if msg["role"] == "assistant" else None):
         st.markdown(msg["content"])
     if msg["role"] == "assistant":
         show_sources(msg.get("scored_chunks", []), msg.get("file_text", ""))
@@ -183,10 +199,14 @@ prompt = st.chat_input(
 if prompt and prompt.files:
     uploaded_file = prompt.files[0]
     with st.spinner("جاري قراءة الملف…"):
-        st.session_state.file_text = extract_text(uploaded_file)
+        raw_text = extract_text(uploaded_file)
+        redacted_text, pii_count = redact_pii(raw_text)
+        st.session_state.file_text = redacted_text
         st.session_state.file_name = uploaded_file.name
     if not prompt.text:
-        notice = f"📎 تم إرفاق الملف: {st.session_state.file_name}"
+        notice = f"تم إرفاق الملف: {st.session_state.file_name}"
+        if pii_count:
+            notice += f"\n\nتم إخفاء {pii_count} بيانات حساسة (هوية / IBAN) تلقائياً"
         st.session_state.messages.append({"role": "user", "content": notice})
         with st.chat_message("user"):
             st.markdown(notice)

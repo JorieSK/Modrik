@@ -1,40 +1,36 @@
-# Embeds text chunks into vectors and stores them in FAISS for semantic retrieval (RAG indexing layer).
 import os
 import pickle
 import numpy as np
 import faiss
-from openai import OpenAI
-from dotenv import load_dotenv
+from sentence_transformers import SentenceTransformer
 
-load_dotenv()
-
+_model: SentenceTransformer | None = None
 _index: faiss.IndexFlatIP | None = None
 _chunks: list[str] = []
 
-# text-embedding-3-large has stronger multilingual (including Arabic) representation than -small
-EMBEDDING_MODEL = "text-embedding-3-large"
-DIMENSION = 3072
-INDEX_PATH = "labor_law.index"
-CHUNKS_PATH = "labor_law_chunks.pkl"
+DIMENSION = 1024
+INDEX_PATH = "index/labor_law.index"
+CHUNKS_PATH = "index/labor_law_chunks.pkl"
 
 
-def _embed(texts: list[str]) -> np.ndarray:
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    # Batch in groups of 100 to stay within API limits
-    all_vectors = []
-    for i in range(0, len(texts), 100):
-        batch = texts[i : i + 100]
-        response = client.embeddings.create(model=EMBEDDING_MODEL, input=batch)
-        all_vectors.extend([item.embedding for item in response.data])
-    vectors = np.array(all_vectors, dtype="float32")
-    # Normalize to unit length so IndexFlatIP == cosine similarity
-    faiss.normalize_L2(vectors)
-    return vectors
+def _get_model() -> SentenceTransformer:
+    global _model
+    if _model is None:
+        _model = SentenceTransformer("intfloat/multilingual-e5-large")
+    return _model
+
+
+def _embed(texts: list[str], is_query: bool = False) -> np.ndarray:
+    model = _get_model()
+    prefix = "query: " if is_query else "passage: "
+    prefixed = [prefix + t for t in texts]
+    vectors = model.encode(prefixed, normalize_embeddings=True, convert_to_numpy=True)
+    return vectors.astype("float32")
 
 
 def embed_and_store(chunks: list[str]) -> None:
     global _index, _chunks
-    vectors = _embed(chunks)
+    vectors = _embed(chunks, is_query=False)
     _index = faiss.IndexFlatIP(DIMENSION)
     _index.add(vectors)
     _chunks = chunks
@@ -64,9 +60,7 @@ def is_loaded() -> bool:
 def retrieve_with_scores(query: str, k: int = 5) -> list[tuple[str, float]]:
     if _index is None or _index.ntotal == 0:
         return []
-    vector = np.array([_embed([query])[0]], dtype="float32")
-    # _embed already normalizes, but ensure single-vector query is also normalized
-    faiss.normalize_L2(vector)
+    vector = _embed([query], is_query=True)
     k = min(k, _index.ntotal)
     scores, indices = _index.search(vector, k)
     return [

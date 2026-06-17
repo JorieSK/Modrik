@@ -3,7 +3,7 @@ Run once to embed the labor law Excel files into a FAISS index saved to disk.
 Usage: python3 ingest_labor_law.py
 """
 import pandas as pd
-from vector_store import embed_and_store, save_to_disk
+from core.vector_store import embed_and_store, save_to_disk
 
 DATA_DIR = "data"
 # label → (path, status_tag)
@@ -88,7 +88,7 @@ def main():
 
     print(f"  {len(all_chunks)} total chunks after smart splitting")
 
-    print("Embedding with text-embedding-3-large (multilingual)…")
+    print("Embedding with multilingual-e5-large (local, free)…")
     embed_and_store(all_chunks)
 
     print("Saving index to disk…")
