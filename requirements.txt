@@ -1,2 +1,9 @@
 streamlit
 python-dotenv
+openai
+pymupdf
+faiss-cpu
+numpy
+pandas
+openpyxl
+sentence-transformers
