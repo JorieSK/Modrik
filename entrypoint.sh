@@ -1,4 +1,5 @@
 #!/bin/sh
+mkdir -p index
 if [ ! -f index/labor_law.index ]; then
     echo "Building FAISS index..."
     python -m scripts.ingest_labor_law
