@@ -2,7 +2,7 @@
 title: Modrik
 emoji: 🔵
 colorFrom: blue
-colorTo: cyan
+colorTo: indigo
 sdk: docker
 app_port: 8501
 pinned: false
