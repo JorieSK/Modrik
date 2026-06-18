@@ -122,7 +122,7 @@ Saudi Labor Law spans hundreds of articles across three states — active, amend
 
 ## ✦ Why this embedding model
 
-Most RAG demos default straight to an embedding API. Modrik instead runs `multilingual-e5-large` **locally** — the multilingual E5 model from **Microsoft Research** — picked after comparing leading multilingual embedding models against published Arabic retrieval benchmarks (MIRACL, MTEB), where it consistently ranks among the strongest open models for Arabic semantic search. That matters here specifically: Saudi Labor Law articles are dense, formal legal Arabic, not casual text.
+Most RAG demos default straight to an embedding API. Modrik instead runs `multilingual-e5-large` **locally** — the multilingual E5 model — picked after comparing leading multilingual embedding models against published Arabic retrieval benchmarks (MIRACL, MTEB), where it consistently ranks among the strongest open models for Arabic semantic search. That matters here specifically: Saudi Labor Law articles are dense, formal legal Arabic, not casual text.
 
 The practical upside: embedding has zero per-query API cost, and the index — active, amended, and repealed articles — is pre-warmed at container startup, so retrieval is instant from the first question.
 
