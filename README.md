@@ -1,11 +1,7 @@
----
-title: Modrik
-emoji: 🔵
-colorFrom: blue
-colorTo: cyan
-sdk: docker
-app_port: 8501
-pinned: false
+
+## ✦ Built at SDA Himmah Hackathon 2026
+
+> Participated — Modrik Team
 ---
 
 <div align="center">
@@ -257,12 +253,6 @@ python -m pytest tests/ -v
 | 🔜 | More legal domains beyond Labor Law |
 | 🔜 | Multi-turn case memory across sessions |
 | 🔜 | Export consultation as PDF |
-
----
-
-## ✦ Built at SDA Himmah Hackathon 2026
-
-> Participated — Modrik Team
 
 ---
 
